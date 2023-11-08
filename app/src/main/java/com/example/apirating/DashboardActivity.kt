@@ -4,13 +4,18 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.ArrayAdapter
 import android.widget.ListView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.apirating.client.ApiClient
+import com.example.apirating.databinding.ActivityDashboardBinding
 import com.example.apirating.model.cursos
 import com.example.apirating.model.response.CursoResponse
 import com.example.apirating.model.users
 import com.example.apirating.network.ApiService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -20,11 +25,13 @@ import retrofit2.converter.gson.GsonConverterFactory
 class DashboardActivity : AppCompatActivity() {
     private lateinit var listViewCourses: ListView
     private lateinit var listViewUsers: ListView
-    private lateinit var apiService: ApiService
+
+    private lateinit var binding: ActivityDashboardBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_dashboard)
+        binding = ActivityDashboardBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         listViewCourses = findViewById(R.id.listViewCourses)
         listViewUsers = findViewById(R.id.listViewUsers)
@@ -87,21 +94,25 @@ class DashboardActivity : AppCompatActivity() {
     private fun getCursos() {
         val apiService = ApiClient.getApiService()
 
-        val cursos: Call<List<CursoResponse>> = apiService.getCursos()
-        cursos.enqueue(object : Callback<List<CursoResponse>> {
-            override fun onResponse(call: Call<List<CursoResponse>>, response: Response<List<CursoResponse>>) {
-                if (response.isSuccessful) {
-                    val cursos = response.body()
-                    cursos?.let {
-                        Log.e("CURSOS", "$cursos")
+        runBlocking {
+            launch(Dispatchers.IO) {
+                try {
+                    val response = apiService.getCursos().execute()
+
+                    if (response.isSuccessful) {
+                        val cursos = response.body()
+                        cursos?.let {
+                            Log.e("CURSOS", "$cursos")
+                        }
+                    } else {
+                        // Handle error
+                        Log.e("API Error", response.message())
                     }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
-
-            override fun onFailure(call: Call<List<CursoResponse>>, t: Throwable) {
-                Toast.makeText(this@DashboardActivity, "Error al cargar cursos", Toast.LENGTH_SHORT).show()
-            }
-        })
+        }
     }
 
 
